@@ -93,7 +93,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
             self.status.info = "Zaber controller initialized"
             self.status.controller = self.controller
             self.status.initialized = True
-            return self.status
+            return self.status.info, self.status.initialized
 
         except Exception as e:
             self.emit_status(ThreadCommand('Update_Status',[getLineInfo()+ str(e),'log']))
@@ -123,7 +123,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
             self.settings.child('units').setValue('deg')
             self.unit = Units.ANGLE_DEGREES
 
-    def check_position(self):
+    def get_actuator_value(self):
         """Get the current position from the hardware with scaling conversion.
         Returns
         -------
@@ -133,8 +133,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
         pos = axis.get_position(unit=self.unit)
 
         pos = self.get_position_with_scaling(pos)
-        self.current_position = pos
-        self.emit_status(ThreadCommand('check_position',[pos]))
+        self.current_value = pos
         return pos
 
 
@@ -150,7 +149,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
         """
         if param.name() == 'axis':
             self.update_axis()
-            self.check_position()
+            self.get_actuator_value()
 
         elif param.name() == 'units':
             axis = self.controller.get_axis(self.settings.child('multiaxes', 'axis').value())
@@ -178,7 +177,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
             self.settings.child('epsilon').setValue(axis.settings.convert_from_native_units(
                 'pos', epsilon_native_units, self.unit))    # Convert epsilon to new units
 
-            self.check_position()
+            self.get_actuator_value()
 
         else:
             pass
@@ -201,18 +200,18 @@ class DAQ_Move_Zaber(DAQ_Move_base):
             self.emit_status(ThreadCommand('Update_Status', [str(e)]))
 
         self.poll_moving()  # start a loop to poll the current actuator value and compare it with target position
-        self.check_position()
+        self.get_actuator_value()
 
-    def move_Rel(self, position):
+    def move_rel(self, position):
         """ Move the actuator to the relative target actuator value defined by position
 
         Parameters
         ----------
         position: (flaot) value of the relative target positioning
         """
-        position = (self.check_bound(self.current_position + position)
-                - self.current_position)
-        self.target_position = position + self.current_position
+        position = (self.check_bound(self.current_value + position)
+                - self.current_value)
+        self.target_position = position + self.current_value
 
         # convert the user set position to the controller position if scaling
         # has been activated by user
@@ -225,7 +224,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
             self.emit_status(ThreadCommand('Update_Status', [str(e)]))
 
         self.poll_moving()
-        self.check_position()
+        self.get_actuator_value()
 
     def move_Home(self):
         """
@@ -236,7 +235,7 @@ class DAQ_Move_Zaber(DAQ_Move_base):
         """
         axis = self.controller.get_axis(self.settings.child('multiaxes', 'axis').value())
         axis.home()
-        self.check_position()
+        self.get_actuator_value()
         self.emit_status(ThreadCommand('Update_Status', ['Zaber Actuator '+ self.parent.title + ' (axis '+str(self.settings.child('multiaxes', 'axis').value())+') has been homed']))
 
 
