@@ -87,7 +87,6 @@ class DAQ_Move_Zaber(DAQ_Move_base):
                 self.emit_status(ThreadCommand('Update_Status', ['Zaber : You requested to use Axis number '+str(user_axis)+
                                                                  ' but only '+str(self.controller.axis_count)+
                                                                  ' are present. Defaulting to Axis number 1.', 'log']))
-            self.settings.child('multiaxes', 'axis').setLimits([*range(1,1+self.controller.axis_count)]) # add limits to axes
             self.update_axis()
 
             self.status.info = "Zaber controller initialized"
